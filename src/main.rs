@@ -2,6 +2,7 @@ use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, ListBox, ListBoxRow, ScrolledWindow, Label};
 use std::path::PathBuf;
 use walkdir::WalkDir;
+use std::collections::HashMap;
 
 fn main() {
     let app = Application::builder()
@@ -28,12 +29,12 @@ fn build_ui(app: &Application) {
         row.set_child(Some(&label));
         list_box.append(&row);
     } else {
-        for path in cbr_files {
-        let row = ListBoxRow::new();
-        let label = Label::new(Some(&path.display().to_string()));
-            label.set_xalign(0.0);
-            row.set_child(Some(&label));
-            list_box.append(&row);
+        for folder_name in cbr_files {
+            let row = ListBoxRow::new();
+            let label = Label::new(Some(&folder_name.0));
+                label.set_xalign(0.0);
+                row.set_child(Some(&label));
+                list_box.append(&row);
         }
     }
 
@@ -53,8 +54,8 @@ fn build_ui(app: &Application) {
 }
 
 
-fn find_cbr_files(path: &PathBuf) -> Vec<PathBuf> {
-    let mut results = Vec::new();
+fn find_cbr_files(path: &PathBuf) -> HashMap<String, PathBuf> {
+    let mut array = HashMap::new();
 
     for entry in WalkDir::new(path)
         .follow_links(false)
@@ -62,17 +63,25 @@ fn find_cbr_files(path: &PathBuf) -> Vec<PathBuf> {
         .filter_map(Result::ok)
     {
         let entry_path = entry.path();
-
-        if let Ok(metadata) = entry.metadata() {
-            if metadata.is_file() {
-                if let Some(ext) = entry_path.extension() {
-                    if ext.to_string_lossy().to_ascii_lowercase() == "cbr" {
-                        results.push(entry_path.to_path_buf());
+        if entry.file_type().is_file() {
+            if let Some(ext) = entry_path.extension() {
+                if ext.to_string_lossy().to_ascii_lowercase() == "cbr" {
+                    match entry_path.strip_prefix(path) {
+                        Ok(rel_path) => {
+                            // Get the first component of the relative path
+                            if let Some(first_component) = rel_path.components().next() {
+                                // save the folder_name and its path into a HashMap which then
+                                // again can be used to read the next contents
+                                let folder_name = first_component.as_os_str().to_string_lossy().to_string();
+                                array.entry(folder_name.clone()).or_insert(path.join(&folder_name));
+                            }
+                        }
+                        Err(e) => eprintln!("Error stripping prefix: {}", e),
                     }
                 }
             }
         }
     }
 
-    results
+    array
 }
