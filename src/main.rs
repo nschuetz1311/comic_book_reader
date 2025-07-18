@@ -29,12 +29,12 @@ fn build_ui(app: &Application) {
         row.set_child(Some(&label));
         list_box.append(&row);
     } else {
-        for folder_name in cbr_files {
+        for path in cbr_files {
             let row = ListBoxRow::new();
-            let label = Label::new(Some(&folder_name.0));
-                label.set_xalign(0.0);
-                row.set_child(Some(&label));
-                list_box.append(&row);
+            let label = Label::new(Some(&path.display().to_string()));
+            label.set_xalign(0.0);
+            row.set_child(Some(&label));
+            list_box.append(&row);
         }
     }
 
@@ -54,34 +54,43 @@ fn build_ui(app: &Application) {
 }
 
 
-fn find_cbr_files(path: &PathBuf) -> HashMap<String, PathBuf> {
-    let mut array = HashMap::new();
+fn find_cbr_files(path: &PathBuf) -> Vec<PathBuf> {
+    let mut results = Vec::new();
+    let mut hm_array = HashMap::new();
 
+    println!("{}", path.join("Test").display());
     for entry in WalkDir::new(path)
         .follow_links(false)
         .into_iter()
         .filter_map(Result::ok)
     {
         let entry_path = entry.path();
-        if entry.file_type().is_file() {
-            if let Some(ext) = entry_path.extension() {
-                if ext.to_string_lossy().to_ascii_lowercase() == "cbr" {
-                    match entry_path.strip_prefix(path) {
-                        Ok(rel_path) => {
-                            // Get the first component of the relative path
-                            if let Some(first_component) = rel_path.components().next() {
-                                // save the folder_name and its path into a HashMap which then
-                                // again can be used to read the next contents
-                                let folder_name = first_component.as_os_str().to_string_lossy().to_string();
-                                array.entry(folder_name.clone()).or_insert(path.join(&folder_name));
-                            }
-                        }
-                        Err(e) => eprintln!("Error stripping prefix: {}", e),
-                    }
-                }
-            }
-        }
-    }
 
-    array
+        if !entry.file_type().is_file() {
+            continue;
+        }
+
+        let Some(ext) = entry_path.extension() else {
+            continue;
+        };
+
+        if ext.to_string_lossy().to_ascii_lowercase() != "cbr" {
+            continue;
+        }
+
+        let Ok(rel_path) = entry_path.strip_prefix(path) else {
+            eprintln!("Error stripping prefix from {}", entry_path.display());
+            continue;
+        };
+
+        if let Some (first_component) = rel_path.components().next() {
+            let folder_name = first_component.as_os_str().to_string_lossy().to_string();
+            hm_array.entry(folder_name.clone()).or_insert(path.join(&folder_name));
+        }
+
+        results.push(entry_path.to_path_buf());
+    }
+    println!("{:?}", hm_array.keys());
+
+    results
 }
