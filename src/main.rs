@@ -1,11 +1,12 @@
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, Label, ListBox, ListBoxRow, ScrolledWindow};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
+use std::io::{self, Write};
 use std::path::PathBuf;
 use walkdir::WalkDir;
-use serde::Deserialize;
 
 const M_CONFIG_NAME: &str = "cbr-config.json";
 
@@ -32,7 +33,6 @@ fn read_config() -> Option<Config> {
 }
 
 fn main() {
-
     let app = Application::builder()
         .application_id("com.example.TestNiko123")
         .build();
@@ -45,34 +45,44 @@ fn main() {
 fn find_config() -> bool {
     let Ok(path) = env::current_dir() else {
         eprintln!("Failed to get current directory");
-        return false
+        return false;
     };
 
     println!("Current working directory: {}", path.display());
 
     let Ok(entries) = fs::read_dir(&path) else {
         eprintln!("Failed to read directory contents!");
-        return false
+        return false;
     };
 
     for entry in entries.flatten() {
         let file_name = entry.file_name();
         if file_name == M_CONFIG_NAME {
-            return true
+            return true;
         }
     }
     false
 }
 
+
+fn create_config(buf: &[u8]) -> io::Result<()> {
+    let mut new_file: fs::File = fs::File::create(M_CONFIG_NAME)?;
+    let _ = new_file.write(buf);
+    Ok(())
+}
+
 fn build_ui(app: &Application) {
-    // for now this condition does nothing
-    // next step will be adding a prompt to the else path
-    // to create and fill out the M_CONFIG_NAME
-    if find_config() {
-        println!("found config!");
-    } else{
-        println!("did not find config!");
+    if !find_config() {
+        // next step will be adding a prompt
+        // to create and fill out the "M_CONFIG_NAME"
+        let buf: &[u8] = br#"{
+    "comics_folder_path": "/home/niko/Comics"
+}"#;
+        if let Err(e) = create_config(buf) {
+            eprintln!("Failed to create config file: {}", e);
+        }
     }
+
     let config = read_config().unwrap_or_default();
     let comics_folder_path = config.comics_folder_path;
 
