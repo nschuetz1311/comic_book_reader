@@ -1,11 +1,12 @@
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, Label, ListBox, ListBoxRow, ScrolledWindow};
 use serde::Deserialize;
-use std::collections::HashMap;
-use std::env;
-use std::fs;
-use std::io::{self, Write};
-use std::path::PathBuf;
+use std::{
+    collections::HashMap,
+    env, fs,
+    io::{self, Write},
+    path::PathBuf,
+};
 use walkdir::WalkDir;
 
 const M_CONFIG_NAME: &str = "cbr-config.json";
