@@ -48,7 +48,7 @@ fn find_config() -> bool {
         return false;
     };
 
-    println!("Current working directory: {}", path.display());
+    // println!("Current working directory: {}", path.display());
 
     let Ok(entries) = fs::read_dir(&path) else {
         eprintln!("Failed to read directory contents!");
@@ -61,9 +61,9 @@ fn find_config() -> bool {
             return true;
         }
     }
+
     false
 }
-
 
 fn create_config(buf: &[u8]) -> io::Result<()> {
     let mut new_file: fs::File = fs::File::create(M_CONFIG_NAME)?;
@@ -105,10 +105,14 @@ fn build_ui(app: &Application) {
         }
     }
 
+    display_ui_stuff(app, &list_box);
+}
+
+fn display_ui_stuff(app: &Application, list_box: &ListBox) {
     let scrolled_window = ScrolledWindow::builder()
         .min_content_width(800)
         .min_content_height(600)
-        .child(&list_box)
+        .child(list_box)
         .build();
 
     let window = ApplicationWindow::builder()
@@ -124,7 +128,6 @@ fn find_cbr_files(path: &PathBuf) -> Vec<PathBuf> {
     let mut results: Vec<PathBuf> = Vec::new();
     let mut hm_array: HashMap<String, PathBuf> = HashMap::new();
 
-    println!("{}", path.join("Test").display());
     for entry in WalkDir::new(path)
         .follow_links(false)
         .into_iter()
