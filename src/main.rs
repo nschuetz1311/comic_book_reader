@@ -1,6 +1,7 @@
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, Label, ListBox, ListBoxRow, ScrolledWindow};
 use serde::Deserialize;
+// use std::path::Path;
 use std::{
     collections::HashMap,
     env, fs,
@@ -87,8 +88,8 @@ fn build_ui(app: &Application) {
     let config = read_config().unwrap_or_default();
     let comics_folder_path = config.comics_folder_path;
 
-    let cbr_files = find_cbr_files(&comics_folder_path);
-
+    // let cbr_files = find_cbr_files(&comics_folder_path);
+    let cbr_files = find_content_lazyly(&comics_folder_path);
     let list_box = ListBox::new();
 
     if cbr_files.is_empty() {
@@ -99,7 +100,11 @@ fn build_ui(app: &Application) {
     } else {
         for path in cbr_files {
             let row = ListBoxRow::new();
-            let label = Label::new(Some(&path.display().to_string()));
+            let Some(last_component) = path.components().last() else {
+                continue;
+            };
+            let folder_name = last_component.as_os_str().to_string_lossy().to_string();
+            let label = Label::new(Some(&folder_name));
             label.set_xalign(0.0);
             row.set_child(Some(&label));
             list_box.append(&row);
@@ -107,6 +112,25 @@ fn build_ui(app: &Application) {
     }
 
     display_ui_stuff(app, &list_box);
+}
+
+fn find_content_lazyly(path: &PathBuf) -> Vec<PathBuf> {
+    let mut return_value: Vec<PathBuf> = Vec::new();
+
+    for entry in WalkDir::new(path)
+        .contents_first(false)
+        .sort_by_file_name()
+        .max_depth(1)
+        .into_iter()
+        .filter_map(Result::ok)
+    {
+        if entry.path() == path {
+            continue;
+        }
+        println!("{:?}", entry);
+        return_value.push(entry.path().to_path_buf());
+    }
+    return_value
 }
 
 fn display_ui_stuff(app: &Application, list_box: &ListBox) {
